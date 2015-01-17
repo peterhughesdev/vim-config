@@ -28,8 +28,6 @@ filetype plugin indent on
 set background=dark
 colorscheme base16-default 
 
-" misc options
-" {{{ interface
 " lines, cols in status line
 set ruler
 set rulerformat=%=%h%m%r%w\ %(%c%V%),%l/%L\ %P
@@ -67,17 +65,12 @@ set hlsearch
 
 " highlight position of cursor
 set cursorline
-"set cursorcolumn
 
 " set splits to open bottom / right
 set splitbelow
 set splitright
 
-"set statusline=%f\ %2*%m\ %1*%h%r%=[%{&encoding}\ %{&fileformat}\ %{strlen(&ft)?&ft:'none'}\ %{getfperm(@%)}]\ 0x%B\ %12.(%c:%l/%L%)
-"set statusline=%<%f\ %h%m%r%=%-14.(%l,%c%V%)\ %P
-"set laststatus=2
-" }}}
-" {{{ behavior
+" file syntax behavior
 set nocompatible
 syntax on
 filetype on
@@ -89,13 +82,16 @@ set ttyfast
 set omnifunc=syntaxcomplete#Complete
 
 " indentation options
-" Note: smartindent is seriously outdated. cindent, even, is unnecessary.
-" Let the filetype plugins do the work.
 set shiftwidth=4
-set tabstop=4
+
+" use spaces instead of tab
 set expandtab
+
+" use 4 spaces per tab
+set tabstop=4
+
 filetype indent on
-"set autoindent
+set autoindent
 
 " show matching enclosing chars for .1 sec
 set showmatch
@@ -127,7 +123,6 @@ set visualbell
 
 " show our whitespace
 set listchars=tab:\|\ ,trail:.
-"set list
 
 " complete to longest match, then list possibilities
 set wildmode=longest,list
@@ -151,11 +146,6 @@ set viminfo+=/100
 " don't duplicate an existing open buffer
 set switchbuf=useopen
 
-" }}}
-
-
-" minor helpful stuff
-"{{{ TAB-COMPLETE and SNIPPETS
 " add new snippets as regex=>completion
 " first match encountered is used
 let s:snippets = {}
@@ -172,40 +162,64 @@ let s:snippets['^\s*while$'] = " () {\<CR>}\<ESC>k^f)i"
 " 3) if word behind cursor contains a slash, try filename complete
 " 4) otherwise, try to ctrl-p complete
 fun! CleverTab()
-	if pumvisible()
-		return "\<C-N>"
-	endif
-	if col('.') > 1
-		let beginning = strpart( getline('.'), 0, col('.')-1 )
-		let words = split(l:beginning,' ')
-		let thisWord = l:words[-1]
+    if pumvisible()
+        return "\<C-N>"
+    endif
+    if col('.') > 1
+        let beginning = strpart( getline('.'), 0, col('.')-1 )
+        let words = split(l:beginning,' ')
+        let thisWord = l:words[-1]
 
-		for key in keys(s:snippets)
-			if l:beginning =~ key
-				return s:snippets[key]
-			endif
-		endfor
-	else
-		let beginning = ''
-	endif
+        for key in keys(s:snippets)
+            if l:beginning =~ key
+                return s:snippets[key]
+            endif
+        endfor
+    else
+        let beginning = ''
+    endif
 
-	if l:beginning == '' || l:beginning =~ '\s$'
-		return "\<Tab>"
-	elseif (l:thisWord =~ '/')
-		return "\<C-X>\<C-F>"
-	else
-		return "\<C-X>\<C-O>"
-		"return "\<C-P>"
-	endif
+    if l:beginning == '' || l:beginning =~ '\s$'
+        return "\<Tab>"
+    elseif (l:thisWord =~ '/')
+        return "\<C-X>\<C-F>"
+    else
+        return "\<C-X>\<C-O>"
+        "return "\<C-P>"
+    endif
 endfunction
 imap <Tab> <C-R>=CleverTab()<CR>
 "}}}
 
-
+" Enable NERDTree and Tagbar on open
 autocmd vimenter * NERDTree
 autocmd vimenter * Tagbar
-autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary")
 
+" Close NERDTree when there are no other open buffers
+" autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary")
+
+autocmd WinEnter * call s:TidyUIOnClose()
+
+function! s:TidyUIOnClose()
+    if exists("t:NERDTreeBufName")
+        let nerdtree_open = bufwinnr(t:NERDTreeBufName) != -1
+    else
+        let nerdtree_open = 0
+    endif
+
+    let tagbar_open = bufwinnr('__Tagbar__') != -1
+
+    let last_window = winnr("$")
+
+    if nerdtree_open && tagbar_open && last_window == 2
+        q
+    elseif (nerdtree_open || tagbar_open) && last_window == 1
+        q
+    endif
+endfunction
+
+
+" Toggle NERDTree and Tagbar with F8 and F9 respectively
 nmap <F8> :NERDTreeToggle<CR>
 nmap <F9> :TagbarToggle<CR>
 
